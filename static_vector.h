@@ -71,7 +71,6 @@ namespace ksv
             tmp.swap(*this);
             return *this;
         }
-
         static_vector &operator=(static_vector &&other) noexcept
         {
             static_vector tmp{std::move(other)};
@@ -126,6 +125,10 @@ namespace ksv
         const_iterator cend() const { return end(); }
         const_riterator crend() const { return rend(); }
 
+        // underlying buffer access
+        pointer data() noexcept { return cleaned_data_ptr(); }
+        const_pointer data() const noexcept { return cleaned_const_data_ptr(); }
+
         // mutating functions
         // addition
         void push_back(const_reference value)
@@ -157,26 +160,52 @@ namespace ksv
         }
 
         // swap
-        friend void swap(static_vector &a, static_vector &b)
+        friend void swap(static_vector &lhs, static_vector &rhs)
         {
-            a.swap(b);
+            lhs.swap(rhs);
+        }
+
+        // comparison operators
+        friend inline bool operator==(const static_vector &lhs, const static_vector &rhs)
+        {
+            return (lhs.size() == rhs.size()) && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+        }
+        friend inline bool operator!=(const static_vector &lhs, const static_vector &rhs)
+        {
+            return !(lhs == rhs);
+        }
+        friend inline bool operator<(const static_vector &lhs, const static_vector &rhs)
+        {
+            return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+        }
+        friend inline bool operator>(const static_vector &lhs, const static_vector &rhs)
+        {
+            return rhs < lhs;
+        }
+        friend inline bool operator<=(const static_vector &lhs, const static_vector &rhs)
+        {
+            return !(lhs > rhs);
+        }
+        friend inline bool operator>=(const static_vector &lhs, const static_vector &rhs)
+        {
+            return !(lhs < rhs);
         }
 
     private:
         // instance fields
-        alignas(T) std::byte data[sizeof(T) * N];// no objects of type T created yet
+        alignas(T) std::byte buffer[sizeof(T) * N];// no objects of type T created yet
         size_type curr_size{0};
 
         // methods for obtaining (const) pointer to required object
         // A (since we use pointer to object B providing storage for A)
-        pointer cleaned_data_ptr(size_t idx = 0)
+        pointer cleaned_data_ptr(size_t idx = 0) noexcept
         {
-            pointer p = std::launder(reinterpret_cast<pointer>(data));
+            pointer p = std::launder(reinterpret_cast<pointer>(buffer));
             return p + idx;
         }
-        const_pointer cleaned_const_data_ptr(size_t idx = 0) const
+        const_pointer cleaned_const_data_ptr(size_t idx = 0) const noexcept
         {
-            const_pointer p = std::launder(reinterpret_cast<const_pointer>(data));
+            const_pointer p = std::launder(reinterpret_cast<const_pointer>(buffer));
             return p + idx;
         }
 
@@ -214,18 +243,18 @@ namespace ksv
         }
         void pb_internal(const_reference value)
         {
-            ::new (data + curr_size * sizeof(T)) T(value);
+            ::new (buffer + curr_size * sizeof(T)) T(value);
             ++curr_size;
         }
         void mb_internal(value_type &&value)
         {
-            ::new (data + curr_size * sizeof(T)) T(std::move(value));
+            ::new (buffer + curr_size * sizeof(T)) T(std::move(value));
             ++curr_size;
         }
         template<typename... Args>
         void eb_internal(Args &&...args)
         {
-            ::new (data + curr_size * sizeof(T)) T(std::forward<Args>(args)...);
+            ::new (buffer + curr_size * sizeof(T)) T(std::forward<Args>(args)...);
             ++curr_size;
         }
     };
