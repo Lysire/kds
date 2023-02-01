@@ -7,6 +7,7 @@
 
 namespace ksv
 {
+
     template<typename T, std::size_t N>
     class static_vector
     {
@@ -71,6 +72,7 @@ namespace ksv
             tmp.swap(*this);
             return *this;
         }
+
         static_vector &operator=(static_vector &&other) noexcept
         {
             static_vector tmp{std::move(other)};
@@ -86,7 +88,9 @@ namespace ksv
 
         // non-mutating functions
         [[nodiscard]] bool empty() const { return curr_size == 0; }
+
         [[nodiscard]] size_type size() const { return curr_size; }
+
         [[nodiscard]] size_type capacity() const { return N; }
 
         // validated element access
@@ -95,6 +99,7 @@ namespace ksv
             validate_index(pos);
             return *cleaned_const_data_ptr(pos);
         }
+
         reference at(size_type pos)
         {
             validate_index(pos);
@@ -103,30 +108,45 @@ namespace ksv
 
         // non-validated element access
         const_reference operator[](size_type pos) const { return *cleaned_const_data_ptr(pos); }
+
         reference operator[](size_type pos) { return *cleaned_data_ptr(pos); }
+
         const_reference front() const { return *cleaned_const_data_ptr(); }
+
         reference front() { return *cleaned_data_ptr(); }
+
         const_reference back() const { return *cleaned_const_data_ptr(curr_size - 1); }
+
         reference back() { return *cleaned_data_ptr(curr_size - 1); }
 
         // iterators
         iterator begin() { return cleaned_data_ptr(); }
+
         riterator rbegin() { return riterator(end()); }
+
         const_iterator begin() const { return cleaned_const_data_ptr(); }
+
         const_iterator rbegin() const { return riterator(end()); }
 
         iterator end() { return cleaned_data_ptr(curr_size); }
+
         riterator rend() { return riterator(begin()); }
+
         const_iterator end() const { return cleaned_const_data_ptr(curr_size); }
+
         const_riterator rend() const { return riterator(begin()); }
 
         const_iterator cbegin() const { return begin(); }
+
         const_riterator crbegin() const { return rbegin(); }
+
         const_iterator cend() const { return end(); }
+
         const_riterator crend() const { return rend(); }
 
         // underlying buffer access
         pointer data() noexcept { return cleaned_data_ptr(); }
+
         const_pointer data() const noexcept { return cleaned_const_data_ptr(); }
 
         // mutating functions
@@ -136,11 +156,13 @@ namespace ksv
             validate_curr_size();
             pb_internal(value);
         }
+
         void push_back(value_type &&value)
         {
             validate_curr_size();
             mb_internal(std::move(value));
         }
+
         template<typename... Args>
         void emplace_back(Args &&...args)
         {
@@ -154,6 +176,7 @@ namespace ksv
             --curr_size;
             std::destroy_at(cleaned_data_ptr(curr_size));
         }
+
         void clear()
         {
             clear_elements();
@@ -170,22 +193,27 @@ namespace ksv
         {
             return (lhs.size() == rhs.size()) && std::equal(lhs.begin(), lhs.end(), rhs.begin());
         }
+
         friend inline bool operator!=(const static_vector &lhs, const static_vector &rhs)
         {
             return !(lhs == rhs);
         }
+
         friend inline bool operator<(const static_vector &lhs, const static_vector &rhs)
         {
             return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
         }
+
         friend inline bool operator>(const static_vector &lhs, const static_vector &rhs)
         {
             return rhs < lhs;
         }
+
         friend inline bool operator<=(const static_vector &lhs, const static_vector &rhs)
         {
             return !(lhs > rhs);
         }
+
         friend inline bool operator>=(const static_vector &lhs, const static_vector &rhs)
         {
             return !(lhs < rhs);
@@ -203,6 +231,7 @@ namespace ksv
             pointer p = std::launder(reinterpret_cast<pointer>(buffer));
             return p + idx;
         }
+
         const_pointer cleaned_const_data_ptr(size_t idx = 0) const noexcept
         {
             const_pointer p = std::launder(reinterpret_cast<const_pointer>(buffer));
@@ -215,11 +244,13 @@ namespace ksv
             if (index >= curr_size)
                 throw std::out_of_range("Out of Range.");
         }
+
         void validate_curr_size() const
         {
             if (curr_size > N)
                 throw std::length_error("Reached max capacity.");
         }
+
         void validate_count(size_type count) const
         {
             if (count > N)
@@ -241,16 +272,19 @@ namespace ksv
             std::swap_ranges(begin(), end(), other.begin());
             std::swap(this->curr_size, other.curr_size);
         }
+
         void pb_internal(const_reference value)
         {
             ::new (buffer + curr_size * sizeof(T)) T(value);
             ++curr_size;
         }
+
         void mb_internal(value_type &&value)
         {
             ::new (buffer + curr_size * sizeof(T)) T(std::move(value));
             ++curr_size;
         }
+
         template<typename... Args>
         void eb_internal(Args &&...args)
         {
@@ -258,4 +292,9 @@ namespace ksv
             ++curr_size;
         }
     };
+
+    // deduction guides
+    template<typename T, typename... U>
+    static_vector(T, U...) -> static_vector<std::enable_if_t<(std::is_same_v<T, U> && ...), T>, 1 + sizeof...(U)>;
+
 }// namespace ksv
