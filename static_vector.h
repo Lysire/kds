@@ -247,7 +247,7 @@ namespace ksv
 
         void validate_curr_size() const
         {
-            if (curr_size > N)
+            if (curr_size >= N)
                 throw std::length_error("Reached max capacity.");
         }
 
